@@ -1,3 +1,22 @@
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# See LICENSE for more details.
+#
+# This code was imported from the avocado-vt project,
+#
+# virttest/remote.py
+# Original author: Michael Goldish <mgoldish@redhat.com>
+#
+# Copyright: 2016 IBM
+# Authors : Michael Goldish <mgoldish@redhat.com>
+
 """
 Functions and classes used for logging into guests and transferring files.
 """
@@ -7,8 +26,6 @@ import time
 import re
 import os
 import pipes
-import shutil
-import tempfile
 
 from aexpect.client import Expect
 from aexpect.client import RemoteSession
@@ -164,8 +181,7 @@ def quote_path(path):
     """
     if isinstance(path, list):
         return ' '.join(map(pipes.quote, path))
-    else:
-        return pipes.quote(path)
+    return pipes.quote(path)
 
 
 def handle_prompts(session, username, password, prompt=PROMPT_LINUX,
@@ -431,7 +447,7 @@ def _remote_scp(
                 continue
             elif match == 1:  # "password:"
                 if password_prompt_count == 0:
-                    logging.debug("Got password prompt, sending '%s'" %
+                    logging.debug("Got password prompt, sending '%s'",
                                   password_list[password_prompt_count])
                     session.sendline(password_list[password_prompt_count])
                     password_prompt_count += 1
@@ -440,7 +456,7 @@ def _remote_scp(
                         authentication_done = True
                     continue
                 elif password_prompt_count == 1 and scp_type == 2:
-                    logging.debug("Got password prompt, sending '%s'" %
+                    logging.debug("Got password prompt, sending '%s'",
                                   password_list[password_prompt_count])
                     session.sendline(password_list[password_prompt_count])
                     password_prompt_count += 1
@@ -490,13 +506,9 @@ def remote_scp(command, password_list, log_filename=None, log_function=None,
     else:
         output_func = None
         output_params = ()
-    session = Expect(command,
-                     output_func=output_func,
-                     output_params=output_params)
-    try:
+    with Expect(command, output_func=output_func,
+                output_params=output_params) as session:
         _remote_scp(session, password_list, transfer_timeout, login_timeout)
-    finally:
-        session.close()
 
 
 def scp_to_remote(host, port, username, password, local_path, remote_path,
@@ -520,7 +532,7 @@ def scp_to_remote(host, port, username, password, local_path, remote_path,
     :param directory: True to copy recursively if the directory to scp
     :raise: Whatever remote_scp() raises
     """
-    if (limit):
+    if limit:
         limit = "-l %s" % (limit)
 
     if host and host.lower().startswith("fe80"):
@@ -532,10 +544,10 @@ def scp_to_remote(host, port, username, password, local_path, remote_path,
     command = "scp"
     if directory:
         command = "%s -r" % command
-    command += (" -v -o UserKnownHostsFile=/dev/null "
-                "-o StrictHostKeyChecking=no "
-                "-o PreferredAuthentications=password %s "
-                "-P %s %s %s@\[%s\]:%s" %
+    command += (r" -v -o UserKnownHostsFile=/dev/null "
+                r"-o StrictHostKeyChecking=no "
+                r"-o PreferredAuthentications=password %s "
+                r"-P %s %s %s@\[%s\]:%s" %
                 (limit, port, quote_path(local_path), username, host,
                  pipes.quote(remote_path)))
     password_list = []
@@ -565,7 +577,7 @@ def scp_from_remote(host, port, username, password, remote_path, local_path,
     :param directory: True to copy recursively if the directory to scp
     :raise: Whatever remote_scp() raises
     """
-    if (limit):
+    if limit:
         limit = "-l %s" % (limit)
     if host and host.lower().startswith("fe80"):
         if not interface:
@@ -576,10 +588,10 @@ def scp_from_remote(host, port, username, password, remote_path, local_path,
     command = "scp"
     if directory:
         command = "%s -r" % command
-    command += (" -v -o UserKnownHostsFile=/dev/null "
-                "-o StrictHostKeyChecking=no "
-                "-o PreferredAuthentications=password %s "
-                "-P %s %s@\[%s\]:%s %s" %
+    command += (r" -v -o UserKnownHostsFile=/dev/null "
+                r"-o StrictHostKeyChecking=no "
+                r"-o PreferredAuthentications=password %s "
+                r"-P %s %s@\[%s\]:%s %s" %
                 (limit, port, username, host, quote_path(remote_path),
                  pipes.quote(local_path)))
     password_list = []
@@ -611,7 +623,7 @@ def scp_between_remotes(src, dst, port, s_passwd, d_passwd, s_name, d_name,
 
     :return: True on success and False on failure.
     """
-    if (limit):
+    if limit:
         limit = "-l %s" % (limit)
     if src and src.lower().startswith("fe80"):
         if not src_inter:
@@ -627,10 +639,10 @@ def scp_between_remotes(src, dst, port, s_passwd, d_passwd, s_name, d_name,
     command = "scp"
     if directory:
         command = "%s -r" % command
-    command += (" -v -o UserKnownHostsFile=/dev/null "
-                "-o StrictHostKeyChecking=no "
-                "-o PreferredAuthentications=password %s -P %s"
-                " %s@\[%s\]:%s %s@\[%s\]:%s" %
+    command += (r" -v -o UserKnownHostsFile=/dev/null "
+                r"-o StrictHostKeyChecking=no "
+                r"-o PreferredAuthentications=password %s -P %s"
+                r" %s@\[%s\]:%s %s@\[%s\]:%s" %
                 (limit, port, s_name, src, quote_path(s_path), d_name, dst,
                  pipes.quote(d_path)))
     password_list = []
@@ -689,7 +701,7 @@ def nc_copy_between_remotes(src, dst, s_port, s_passwd, d_passwd,
     except Exception:
         pass
 
-    logging.info("Transfer data using netcat from %s to %s" % (src, dst))
+    logging.info("Transfer data using netcat from %s to %s", src, dst)
     cmd = "nc -w %s" % timeout
     if d_protocol == "udp":
         cmd += " -u"
@@ -927,7 +939,7 @@ def throughput_transfer(func):
 @throughput_transfer
 def copy_files_to(address, client, username, password, port, local_path,
                   remote_path, limit="", log_filename=None, log_function=None,
-                  verbose=False, timeout=600, interface=None, filesize=None,
+                  verbose=False, timeout=600, interface=None, filesize=None,  # pylint: disable=unused-argument
                   directory=True):
     """
     Copy files to a remote host (guest) using the selected client.
@@ -970,7 +982,7 @@ def copy_files_to(address, client, username, password, port, local_path,
 @throughput_transfer
 def copy_files_from(address, client, username, password, port, remote_path,
                     local_path, limit="", log_filename=None, log_function=None,
-                    verbose=False, timeout=600, interface=None, filesize=None,
+                    verbose=False, timeout=600, interface=None, filesize=None,  # pylint: disable=unused-argument
                     directory=True):
     """
     Copy files from a remote host (guest) using the selected client.

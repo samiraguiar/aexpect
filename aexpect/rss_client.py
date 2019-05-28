@@ -1,9 +1,26 @@
 #!/usr/bin/python
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# See LICENSE for more details.
+#
+# This code was imported from the avocado-vt project,
+#
+# virttest/rss_client.py
+# Original author: Michael Goldish <mgoldish@redhat.com>
+#
+# Copyright: 2008-2010 Red Hat Inc.
+# Authors : Michael Goldish <mgoldish@redhat.com>
+
 """
 Client for file transfer services offered by RSS (Remote Shell Server).
-
-:author: Michael Goldish (mgoldish@redhat.com)
-:copyright: 2008-2010 Red Hat Inc.
 """
 
 from __future__ import division
@@ -235,7 +252,7 @@ class FileTransferClient(object):
             f.close()
 
     def _send_msg(self, msg, timeout=60):
-        self._send(struct.pack("=I", msg))
+        self._send(struct.pack("=I", msg), timeout)
 
     def _receive_msg(self, timeout=60):
         s = self._receive(4, timeout)
