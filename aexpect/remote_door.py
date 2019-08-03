@@ -170,7 +170,7 @@ def running_remotely(fn):
             wrapper_control = wrapper_control.replace("\n", "\r\n")
 
         control_path = _string_generated_control(wrapper_control)
-        run_subcontrol(session, control_path)
+        return run_subcontrol(session, control_path)
 
     return wrapper
 
@@ -213,7 +213,7 @@ def run_subcontrol(session, control_path, timeout=600, detach=False):
         session.set_output_params(())
         session.sendline(cmd)
     else:
-        session.cmd(cmd, timeout=timeout, print_func=logging.info)
+        return session.cmd(cmd, timeout=timeout, print_func=logging.info)
 
 
 def prep_subcontrol(src_file, src_dir=None):
