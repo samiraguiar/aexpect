@@ -72,7 +72,7 @@ def _string_call(function, *args, **kwargs):
     arguments = ""
     for arg in args:
         if isinstance(arg, str):
-            arguments = "%s'%s'" % (arguments, arg)
+            arguments = "%sr'%s'" % (arguments, arg)
         else:
             arguments = "%s%s" % (arguments, arg)
         if len(kwargs) > 0 or arg != args[-1]:
@@ -80,7 +80,7 @@ def _string_call(function, *args, **kwargs):
     ordered_kwargs = list(kwargs.keys())
     for key in ordered_kwargs:
         if isinstance(kwargs[key], str):
-            arguments = "%s%s='%s'" % (arguments, key, kwargs[key])
+            arguments = "%s%s=r'%s'" % (arguments, key, kwargs[key])
         else:
             arguments = "%s%s=%s" % (arguments, key, kwargs[key])
         if key != ordered_kwargs[-1]:
@@ -158,6 +158,10 @@ def running_remotely(fn):
         logging.debug("Running remotey a function using the wrapper control %s",
                       wrapper_control)
 
+        # fix line endings for Windows clients
+        if session.client == "nc":
+            wrapper_control = wrapper_control.replace("\n", "\r\n")
+
         control_path = _string_generated_control(wrapper_control)
         run_subcontrol(session, control_path)
 
@@ -180,10 +184,23 @@ def run_subcontrol(session, control_path, timeout=600, detach=False):
     :param bool detach: whether to detach from session (e.g. if running a
                         daemon or similar long-term utility)
     """
-    remote_control_path = os.path.join("/tmp", os.path.basename(control_path))
-    remote.scp_to_remote(session.host, session.port, session.username, session.password,
+    # Linux VMs
+    if session.client == "ssh":
+        transfer_client = "scp"
+        transfer_port = 22
+        remote_control_path = os.path.join("/tmp", os.path.basename(control_path))
+        python_binary = REMOTE_PYTHON_BINARY
+    # Windows VMs
+    elif session.client == "nc":
+        transfer_client = "rss"
+        transfer_port = 10023
+        remote_control_path = "%TEMP%\\" + os.path.basename(control_path)
+        python_binary = session.cmd("where python", timeout=timeout, print_func=logging.info).strip()
+    else:
+        raise NotImplementedError("run_subcontrol not implemented for client %s" % session.client)
+    remote.copy_files_to(session.host, transfer_client, session.username, session.password, transfer_port,
                          control_path, remote_control_path)
-    cmd = REMOTE_PYTHON_BINARY + " " + remote_control_path
+    cmd = python_binary + " " + remote_control_path
     if detach:
         session.set_output_func(logging.info)
         session.set_output_params(())
